@@ -1,4 +1,4 @@
-global modelName,modelIdentifier,processerName,processerSpeed,numProcessors,numCores,memory,serialNumber,uuid
+global modelName,modelIdentifier,processerName,processerSpeed,numProcessors,numCores,memory,serialNumber,uuid,modelYear
 
 on getSystemInfo() -- gets hardware info from system_profiler and saves it to variables
   set oldDelims to AppleScript's text item delimiters -- save current text delimiters to oldDelims
@@ -19,9 +19,15 @@ on getSystemInfo() -- gets hardware info from system_profiler and saves it to va
 end getSystemInfo
 
 on getModelYear()
-  set lengthSerial to length of serialNumber
-  --curl https://support-sp.apple.com/sp/product?cc=
+  set oldDelims to AppleScript's text item delimiters -- save current text delimiters to oldDelims
+  set AppleScript's text item delimiters to {">","<"} -- set new text delimiters to ">" and "<"
+  set tmpFiles to POSIX path of (path to temporary items) -- gets temporary files path
+  set lengthSerial to length of serialNumber -- gets length of serial (serial can be 11 or 12 numbers)
+  set endSerial to text 9 through (length of serialNumber) of serialNumber -- gets last 3 or 4 characters of serialNumber (depending of if serialNumber is 11 or 12 characters long)
+  tell application "System Events" to do shell script "cd " & tmpFiles & ";curl https://support-sp.apple.com/sp/product?cc=" & endSerial -- downloads xml file that contains year number from apple using endSerial
+  set xmlData to text item 11 of result -- sets xmlData to xml data containing model year
+  set AppleScript's text item delimiters to oldDelims -- set text delimiters to oldDelims
 end getModelYear
 
 getSystemInfo()
---getModelYear()
+getModelYear()
