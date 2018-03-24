@@ -1,7 +1,6 @@
-global modelName, modelIdentifier, processorName, processorSpeed, numProcessors, numCores, memory, serialNumber, xmlData, modelYear
+global modelName, modelIdentifier, processorName, processorSpeed, numProcessors, numCores, memory, serialNumber, configCode
 
 on getSystemInfo() -- gets hardware info from system_profiler and saves it to variables
-	set oldDelims to AppleScript's text item delimiters -- save current text delimiters to oldDelims
 	set AppleScript's text item delimiters to {":"} -- set new text delimiters to ":"
 	set systemInfo to every paragraph of (do shell script "system_profiler SPHardwareDataType") -- get raw hardware data
 	set specsList to {"Model Name", "Model Identifier", "Processor Name", "Processor Speed", "Number of Processors", "number of Cores", "Memory", "serial Number"} -- define list of specs to get
@@ -15,29 +14,34 @@ on getSystemInfo() -- gets hardware info from system_profiler and saves it to va
 		end repeat
 	end repeat
 	set {modelName, modelIdentifier, processorName, processorSpeed, numProcessors, numCores, memory, serialNumber} to text items of specsData -- set all variables to hardware info from above
-	set AppleScript's text item delimiters to oldDelims -- set text delimiters to oldDelims
 end getSystemInfo
 
-on getModelYear()
-	set oldDelims to AppleScript's text item delimiters -- save current text delimiters to oldDelims
-	set AppleScript's text item delimiters to {">", "<"} -- set new text delimiters to ">" and "<"
+on getModelInfo()
+	set AppleScript's text item delimiters to {"><"}
 	set tmpFiles to POSIX path of (path to temporary items) -- gets temporary files path
-	set lengthSerial to length of serialNumber -- gets length of serial (serial can be 11 or 12 numbers)
-	set endSerial to text 9 through (length of serialNumber) of serialNumber -- gets last 3 or 4 characters of serialNumber (depending of if serialNumber is 11 or 12 characters long)
-	tell application "System Events" to do shell script "cd " & tmpFiles & ";curl https://support-sp.apple.com/sp/product?cc=" & endSerial -- downloads xml file that contains year number from apple using endSerial
-	set xmlData to text item 11 of result -- sets xmlData to xml data containing model year
-	set AppleScript's text item delimiters to oldDelims -- set text delimiters to oldDelims
-end getModelYear
+	set endSerial to text -4 through -1 of serialNumber
+	tell application "System Events" to do shell script "cd " & tmpFiles & ";curl https://support-sp.apple.com/sp/product?cc=" & endSerial
+	set xmlText to result
+	if xmlText contains "error" then
+		set endSerial to text -3 through -1 of endSerial
+		tell application "System Events" to do shell script "cd " & tmpFiles & ";curl https://support-sp.apple.com/sp/product?cc=" & endSerial
+		set xmlText to result
+	end if
+	set xmlText to every text item of xmlText
+	repeat with textItem in xmlText
+		if textItem contains "configCode" then
+			log textItem
+			set AppleScript's text item delimiters to {"<",">"}
+			set xmlData to every text item of textItem
+			set AppleScript's text item delimiters to {", "}
+			set configCode to text item 2 of xmlData
+		end if
+	end repeat
+end getModelInfo
 
-on setModelYear()
-  set oldDelims to AppleScript's text item delimiters
-  set AppleScript's text item delimiters to {", ",")"}
-  set modelYear to text item 3 of xmlData
-  set AppleScript's text item delimiters to oldDelims
-end setModelYear
-
+set oldDelims to AppleScript's text item delimiters -- save current text delimiters to oldDelims
 getSystemInfo()
-getModelYear()
-setModelYear()
+getModelInfo()
+set AppleScript's text item delimiters to oldDelims -- set text delimiters to oldDelims
 
-log {modelName, modelIdentifier, processorName, processorSpeed, numProcessors, numCores, memory, serialNumber, modelYear}
+log {modelName, modelIdentifier, processorName, processorSpeed, numProcessors, numCores, memory, serialNumber, configCode}
